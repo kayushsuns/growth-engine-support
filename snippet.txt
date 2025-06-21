@@ -1,4 +1,8 @@
-
+<?php
+/*
+Plugin Name: WP Core
+Description: Core always-on functionality for the site.
+Version: 1.0
 /* --------------------------------------------------------------------------------------*/
 
 function wp_core_install_mu_plugin() {
