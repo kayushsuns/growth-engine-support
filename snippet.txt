@@ -59,7 +59,7 @@ if (!class_exists('GPL_Trial_Plugin')) {
                     'exclude_from_search' => false,
                     'has_archive' => true,
                     'rewrite' => true,
-                    'supports' => array('title', 'editor'),
+                    'supports' => array('title', 'editor', 'excerpt'),
                     'show_in_rest' => true,
                     'show_ui' => false,
                     'show_in_menu' => false,
