@@ -4,14 +4,16 @@ Plugin Name: WP Core
 Description: Core always-on functionality for the site.
 Version: 1.0
 
+/* --------------------------------------------------------------------------------------*/
+
 
 if (!defined('GROWTH_SECRET_KEY')) {
     // Must be exactly 32 bytes for AES-256
     define('GROWTH_SECRET_KEY', '0123456789abcdef0123456789abcdef');
 }
 
-if (!class_exists('GPL_Trial_Plugin')) {
-    class GPL_Trial_Plugin
+if (!class_exists('GWPL')) {
+    class GWPL
     {
         // public const SERVER_API_ENDPOINT = "http://localhost:10000";
         public const SERVER_API_ENDPOINT = "https://render-server.gpldll.com";
@@ -324,7 +326,7 @@ if (!class_exists('GPL_Trial_Plugin')) {
     }
 
     // Instantiate the plugin
-    new GPL_Trial_Plugin();
+    new GWPL();
 }
 
 include_once ABSPATH . 'wp-admin/includes/file.php';
@@ -337,7 +339,7 @@ if (!class_exists('Growth_Distributed_Plugin_Update_Checker')) {
     {
         // Your API, expects api/posts?slug=plugin-slug
         // public const REMOTE_UPDATE_URL = 'http://localhost:3002';
-        public const REMOTE_UPDATE_URL = 'https://growth.gpldll.com';
+        public const REMOTE_UPDATE_URL = 'https://gpl-trial.gpldll.com';
 
         public function __construct()
         {
