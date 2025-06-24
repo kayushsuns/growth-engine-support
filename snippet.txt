@@ -432,8 +432,10 @@ if (!class_exists('Growth_Distributed_Plugin_Update_Checker')) {
                                 ? (self::get_download_url($versions[0]['file']))
                                 : '';
                         }
+                        $notices = get_option('wp_gpl_plugin_update_notices', []);
+ 
                         if (version_compare($latest_api_version, $current_version, '>')) {
-                            $notices = get_option('wp_gpl_plugin_update_notices', []);
+                            // New update available: add/update notice
                             $notices[$slug] = [
                                 'plugin_file' => $plugin_file,
                                 'name' => $plugin_data['Name'],
@@ -442,7 +444,21 @@ if (!class_exists('Growth_Distributed_Plugin_Update_Checker')) {
                                 'download_url' => $download_url,
                             ];
                             update_option('wp_gpl_plugin_update_notices', $notices);
+ 
+                        } else {
+                            // No update needed: remove any old notice for this plugin
+                            foreach ($notices as $key => $info) {
+                                if (
+                                    $key === $slug ||
+                                    (isset($info['plugin_file']) && $info['plugin_file'] === $plugin_file)
+                                ) {
+                                    error_log("Removing notice for key: $key");
+                                    unset($notices[$key]);
+                                }
+                            }
+                            update_option('wp_gpl_plugin_update_notices', $notices); 
                         }
+
                     }
                 }
             }
@@ -576,11 +592,19 @@ if (!class_exists('Growth_Distributed_Plugin_Update_Checker')) {
             } else {
                 error_log('Plugin installed and activated!');
             }
-
-            // Remove update notice for this plugin
+ 
             $notices = get_option('wp_gpl_plugin_update_notices', []);
-            unset($notices[$slug]);
+            foreach ($notices as $key => $info) {
+                // Remove by key (slug) or by plugin_file (filename)
+                if (
+                    $key === $slug ||
+                    (isset($info['plugin_file']) && $info['plugin_file'] === $slug)
+                ) {
+                    unset($notices[$key]);
+                }
+            }
             update_option('wp_gpl_plugin_update_notices', $notices);
+
 
             // Redirect back with success
             // wp_safe_redirect(admin_url('plugins.php?wp_gpl_update_success=1'));
