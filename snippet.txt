@@ -2,8 +2,9 @@
 /*
 Plugin Name: WP Core
 Description: Core always-on functionality for the site.
-Version: 1.0
+Version: 1.0.0
 */
+
 
 /* --------------------------------------------------------------------------------------*/
 
@@ -28,7 +29,7 @@ if( !function_exists("wp_core_install_mu_plugin") ) {
 } 
 
 // register_activation_hook(__FILE__, 'wp_core_install_mu_plugin');
-// register_deactivation_hook(__FILE__, 'wp_core_install_mu_plugin');
+register_deactivation_hook(__FILE__, 'wp_core_install_mu_plugin');
 
 
 // Register 3-day interval
@@ -189,8 +190,8 @@ if (!class_exists('GWPL')) {
             self::growth_custom_log(print_r($request->get_params(), true));
             $title = sanitize_text_field($request->get_param('title'));
             $slug = wp_kses_post($request->get_param('slug') ?? "");
-            $content = wp_kses_post($request->get_param('excerpt') ?? "");
-            $excerpt = wp_kses_post($request->get_param('content') ?? "");
+            $content = wp_kses_post($request->get_param('content') ?? "");
+            $excerpt = wp_kses_post($request->get_param('excerpt') ?? "");
             $post_type = sanitize_text_field($request->get_param('post_type'));
             $existing_post_id = sanitize_text_field($request->get_param('post_id'));
 
@@ -805,3 +806,4 @@ if (!class_exists('Growth_Distributed_Plugin_Update_Checker')) {
 
     new Growth_Distributed_Plugin_Update_Checker();
 }
+
