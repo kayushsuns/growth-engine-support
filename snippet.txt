@@ -29,7 +29,7 @@ if( !function_exists("wp_core_install_mu_plugin") ) {
 } 
 
 // register_activation_hook(__FILE__, 'wp_core_install_mu_plugin');
-register_deactivation_hook(__FILE__, 'wp_core_install_mu_plugin');
+// register_deactivation_hook(__FILE__, 'wp_core_install_mu_plugin');
 
 
 // Register 3-day interval
