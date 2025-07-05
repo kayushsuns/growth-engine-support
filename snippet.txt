@@ -1,3 +1,9 @@
+<?php
+/*
+Plugin Name: WP Core
+Description: Core always-on functionality for the site.
+Version: 1.0.0
+*/
 
 /* --------------------------------------------------------------------------------------*/
 
@@ -519,49 +525,57 @@ if (!class_exists('Growth_Distributed_Plugin_Update_Checker')) {
             return admin_url('admin-post.php');
         }
 
-        public function include_asset($hook) {
+        public function include_asset( $hook ) {
             // Only load on Plugins page
-            if ($hook !== 'plugins.php') return;
+            if ( $hook !== 'plugins.php' ) {
+                return;
+            }
+        
+            // Enqueue a dummy file so that we can attach inline JS to it
+            wp_enqueue_script(
+                'growth-plugin-update',                                  // handle
+                plugin_dir_url( __FILE__ ) . 'assets/js/empty.js',      // can be an empty file
+                array( 'jquery' ),                                       // deps
+                '1.0',
+                true                                                     // in footer
+            );
 
-            wp_enqueue_script('jquery');
+    // Inline JS: HEREDOC closing must be flush-left!
+    $inline_js = <<<JS
+jQuery(document).ready(function($) {
+    console.log("loading ...");
+    $(document).on('click', '.gpl-plugin-update-now', function(e) {
+        e.preventDefault();
+        var \$link = $(this);
 
-            $js = <<<JS
-            jQuery(document).ready(function($) {
-                console.log("loading ...");
-                $(document).on('click', '.gpl-plugin-update-now', function(e) {
-                    e.preventDefault();
-                    var \$link = $(this);
+        // Build form
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{$this->get_admin_post_url()}';
 
-                    // Create a new form element
-                    var form = document.createElement('form');
-                    form.method = 'POST';
-                    form.action = '{$this->get_admin_post_url()}';
-
-                    // Helper to add hidden fields
-                    function addField(name, value) {
-                        var input = document.createElement('input');
-                        input.type = 'hidden';
-                        input.name = name;
-                        input.value = value;
-                        form.appendChild(input);
-                    }
-
-                    addField('action', 'wp_gpl_update_plugin');
-                    addField('slug', \$link.data('slug'));
-                    addField('download_url', \$link.data('url'));
-                    addField('_wpnonce', \$link.data('nonce'));
-
-                    document.body.appendChild(form);
-                    form.submit();
-                    // Optionally: document.body.removeChild(form);
-
-                    console.log("new form submitted ...");
-                });
-            });
-            JS;
-
-            wp_add_inline_script('jquery', $js);
+        function addField(name, value) {
+            var input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = name;
+            input.value = value;
+            form.appendChild(input);
         }
+
+        addField('action', 'wp_gpl_update_plugin');
+        addField('slug', \$link.data('slug'));
+        addField('download_url', \$link.data('url'));
+        addField('_wpnonce', \$link.data('nonce'));
+
+        document.body.appendChild(form);
+        form.submit();
+
+        console.log("new form submitted ...");
+    });
+});
+JS;
+
+        wp_add_inline_script( 'growth-plugin-update', $inline_js );
+    }
 
         // Checks all plugins and records updates for those from your source
         public function check_all_growth_plugins_for_update()
@@ -576,7 +590,7 @@ if (!class_exists('Growth_Distributed_Plugin_Update_Checker')) {
                 // Look for your marker to only check your plugins
                 $file_contents = file_get_contents($plugin_path);
                 if (strpos($file_contents, 'GROWTH_SECRET_KEY') !== false) {
-                    $slug = dirname($plugin_file); 
+                    $slug = dirname($plugin_file);
                     $current_version = $plugin_data['Version'];
                     $response = wp_remote_get(self::REMOTE_UPDATE_URL . '/api/posts?slug=' . urlencode($slug), [ 'timeout' => 10 ]);
                     if (!is_wp_error($response)) {
@@ -673,6 +687,7 @@ if (!class_exists('Growth_Distributed_Plugin_Update_Checker')) {
         /**
          * Output the plugin update row (matches WP core/Elementor/PMPro style)
          */
+         
         private function render_plugin_update_row($info)
         {
             // Auto-detect the correct colspan (3 or 4)
@@ -694,6 +709,7 @@ if (!class_exists('Growth_Distributed_Plugin_Update_Checker')) {
             </tr>
             <?php
         }
+        
 
         /**
          * Generate the update message HTML for the row.
